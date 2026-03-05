@@ -193,16 +193,7 @@ public class DataPointDao extends AbstractVoDao<DataPointVO, DataPointsRecord, D
      * Check licensing before adding a point
      */
     private void checkAddPoint() {
-        IMangoLifecycle lifecycle = Providers.get(IMangoLifecycle.class);
-        Integer limit = lifecycle.dataPointLimit();
-        if(limit != null && this.countMonitor.getValue() >= limit) {
-            String licenseType;
-            if(Common.license() != null)
-                licenseType = Common.license().getLicenseType();
-            else
-                licenseType = "Free";
-            throw new LicenseViolatedException(new TranslatableMessage("license.dataPointLimit", licenseType, limit));
-        }
+        // DHC: point limit check disabled — no license restriction
     }
 
     @Override

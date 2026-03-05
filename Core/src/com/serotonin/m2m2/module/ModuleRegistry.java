@@ -629,8 +629,8 @@ public class ModuleRegistry {
                 version,
                 buildDate,
                 new TranslatableMessage("modules.core.description"),
-                "Radix IoT, LLC",
-                "https://radixiot.com/",
+                "DHC Automation and Controls Ltd.",
+                "https://dhcautomation.com/",
                 null, -1,
                 Boolean.TRUE.toString().equals(Common.releaseProps.getProperty("signed")));
     }

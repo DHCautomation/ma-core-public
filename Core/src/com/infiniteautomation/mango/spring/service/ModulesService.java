@@ -4,57 +4,23 @@
 package com.infiniteautomation.mango.spring.service;
 
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.StringWriter;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Properties;
 import java.util.concurrent.CopyOnWriteArrayList;
 
-import org.apache.commons.lang3.StringUtils;
 import org.apache.http.HttpException;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.entity.StringEntity;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
-import com.github.zafarkhaja.semver.Version;
-import com.infiniteautomation.mango.monitor.ValueMonitor;
-import com.infiniteautomation.mango.util.exception.FeatureDisabledException;
-import com.infiniteautomation.mango.util.usage.DataPointUsageStatistics;
-import com.infiniteautomation.mango.util.usage.DataSourceUsageStatistics;
-import com.infiniteautomation.mango.util.usage.PublisherPointsUsageStatistics;
-import com.infiniteautomation.mango.util.usage.PublisherUsageStatistics;
 import com.serotonin.db.pair.StringStringPair;
 import com.serotonin.json.JsonException;
-import com.serotonin.json.JsonWriter;
-import com.serotonin.json.type.JsonArray;
-import com.serotonin.json.type.JsonObject;
-import com.serotonin.json.type.JsonString;
-import com.serotonin.json.type.JsonTypeReader;
 import com.serotonin.json.type.JsonValue;
 import com.serotonin.m2m2.Common;
-import com.serotonin.m2m2.ICoreLicense;
-import com.serotonin.m2m2.UpgradeVersionState;
-import com.serotonin.m2m2.db.dao.DataPointDao;
-import com.serotonin.m2m2.db.dao.DataSourceDao;
-import com.serotonin.m2m2.db.dao.PublishedPointDao;
-import com.serotonin.m2m2.db.dao.PublisherDao;
-import com.serotonin.m2m2.db.dao.SystemSettingsDao;
-import com.serotonin.m2m2.i18n.TranslatableMessage;
-import com.serotonin.m2m2.module.Module;
 import com.serotonin.m2m2.module.ModuleNotificationListener;
 import com.serotonin.m2m2.module.ModuleNotificationListener.UpgradeState;
-import com.serotonin.m2m2.module.ModuleRegistry;
-import com.serotonin.provider.Providers;
-import com.serotonin.web.http.HttpUtils4;
 
 /**
  * Module upgrade management service
@@ -73,88 +39,22 @@ public class ModulesService {
 
     private final Environment env;
     private final PermissionService permissionService;
-    private final PublishedPointDao publishedPointDao;
 
-    public ModulesService(Environment env, PermissionService permissionService, PublishedPointDao publishedPointDao) {
+    public ModulesService(Environment env, PermissionService permissionService) {
         this.env = env;
         this.permissionService = permissionService;
-        this.publishedPointDao = publishedPointDao;
 
         // Add our own listener
         listeners.add(new ModulesServiceListener());
     }
 
     /**
-     * Start downloading modules
+     * Start downloading modules — DHC: disabled, no outbound store calls
      */
     public String startDownloads(List<StringStringPair> modules, boolean backup, boolean restart) {
         permissionService.ensureAdminRole(Common.getUser());
-
-        if (env.getProperty("store.disableUpgrades", Boolean.class, false)) {
-            throw new FeatureDisabledException(new TranslatableMessage("modules.error.upgradesDisabled"));
-        }
-
-        synchronized (upgradeDownloaderLock) {
-            if (upgradeDownloader != null)
-                return Common.translate("modules.versionCheck.occupied");
-        }
-
-        // Check if the selected modules will result in a version-consistent system.
-        try {
-            // Create the request
-            Map<String, Object> json = new HashMap<>();
-            Map<String, String> jsonModules = new HashMap<>();
-            json.put("modules", jsonModules);
-
-            Version coreVersion = Common.getVersion();
-
-            jsonModules.put(ModuleRegistry.CORE_MODULE_NAME, coreVersion.toString());
-            for (StringStringPair module : modules)
-                jsonModules.put(module.getKey(), module.getValue());
-
-            StringWriter stringWriter = new StringWriter();
-            new JsonWriter(Common.JSON_CONTEXT, stringWriter).writeObject(json);
-            String requestData = stringWriter.toString();
-
-            // Send the request
-            String baseUrl = env.getProperty("store.url");
-            if (StringUtils.isEmpty(baseUrl)) {
-                log.info("No consistency check performed as no store.url is defined in configuration file.");
-                return "No consistency check performed as no store.url is defined in configuration file.";
-            }
-            baseUrl += "/servlet/consistencyCheck";
-
-            HttpPost post = new HttpPost(baseUrl);
-            post.setEntity(new StringEntity(requestData));
-
-            String responseData = HttpUtils4.getTextContent(Common.getHttpClient(), post, 1);
-
-            // Parse the response
-            JsonTypeReader jsonReader = new JsonTypeReader(responseData);
-            String result = jsonReader.read().toString();
-            if (!"ok".equals(result))
-                return result;
-        } catch (Exception e) {
-            log.error("", e);
-            return e.getMessage();
-        }
-
-        synchronized (upgradeDownloaderLock) {
-            // Ensure that 2 downloads cannot start at the same time.
-            if (upgradeDownloader == null) {
-                upgradeDownloader = new UpgradeDownloader(modules, backup, restart, listeners, () -> {
-                    synchronized (upgradeDownloaderLock) {
-                        upgradeDownloader = null;
-                    }
-                });
-                //Clear out common info
-                resetUpgradeStatus();
-                Common.backgroundProcessing.execute(upgradeDownloader);
-            } else
-                return Common.translate("modules.versionCheck.occupied");
-        }
-
-        return null;
+        log.info("Module downloads disabled — SlateBAS does not contact external stores.");
+        return "Module downloads are disabled in SlateBAS.";
     }
 
     /**
@@ -197,138 +97,20 @@ public class ModulesService {
     }
 
     /**
-     * How many upgrades are available
+     * How many upgrades are available — DHC: always returns 0, no outbound calls
      */
     public int upgradesAvailable() throws Exception {
         permissionService.ensureAdminRole(Common.getUser());
-
-        if (env.getProperty("store.disableUpgrades", Boolean.class, false)) {
-            throw new FeatureDisabledException(new TranslatableMessage("modules.error.upgradesDisabled"));
-        }
-
-        JsonValue jsonResponse = getAvailableUpgrades();
-
-        if (jsonResponse == null)
-            return 0; //Empty store.url
-        if (jsonResponse instanceof JsonString)
-            throw new Exception("Mango Store Response Error: " + jsonResponse.toString());
-
-        JsonObject root = jsonResponse.toJsonObject();
-
-        int size = root.getJsonArray("upgrades").size();
-        if (size > 0) {
-            // Notify the listeners
-            JsonValue jsonUpgrades = root.get("upgrades");
-            JsonArray jsonUpgradesArray = jsonUpgrades.toJsonArray();
-            for (JsonValue v : jsonUpgradesArray) {
-                for (ModuleNotificationListener l : listeners)
-                    l.moduleUpgradeAvailable(v.getJsonValue("name").toString(),
-                            v.getJsonValue("version").toString());
-            }
-            JsonValue jsonInstalls = root.get("newInstalls");
-            JsonArray jsonInstallsArray = jsonInstalls.toJsonArray();
-            for (JsonValue v : jsonInstallsArray) {
-                for (ModuleNotificationListener l : listeners)
-                    l.newModuleAvailable(v.getJsonValue("name").toString(),
-                            v.getJsonValue("version").toString());
-            }
-
-        }
-        return size;
+        return 0;
     }
 
     /**
-     * Get the information for available upgrades
+     * Get the information for available upgrades — DHC: disabled, returns null (no outbound calls)
      */
     public JsonValue getAvailableUpgrades() throws JsonException, IOException, HttpException {
         permissionService.ensureAdminRole(Common.getUser());
-
-        if (env.getProperty("store.disableUpgrades", Boolean.class, false)) {
-            throw new FeatureDisabledException(new TranslatableMessage("modules.error.upgradesDisabled"));
-        }
-
-        // Create the request
-        List<Module> modules = ModuleRegistry.getModules();
-        Module.sortByName(modules);
-
-        Map<String, Object> json = new HashMap<>();
-        json.put("guid", Providers.get(ICoreLicense.class).getGuid());
-        json.put("description", SystemSettingsDao.getInstance().getValue(SystemSettingsDao.INSTANCE_DESCRIPTION));
-        json.put("distributor", env.getProperty("distributor"));
-        json.put("upgradeVersionState",
-                SystemSettingsDao.getInstance().getIntValue(SystemSettingsDao.UPGRADE_VERSION_STATE));
-
-        Properties props = new Properties();
-        Path propFile = Common.MA_HOME_PATH.resolve("release.properties");
-        int versionState = UpgradeVersionState.DEVELOPMENT;
-        if (Files.isRegularFile(propFile)) {
-            try (InputStream in = Files.newInputStream(propFile)) {
-                props.load(in);
-            }
-            String currentVersionState = props.getProperty("versionState");
-            try {
-                if (currentVersionState != null)
-                    versionState = Integer.parseInt(currentVersionState);
-            } catch (NumberFormatException e) {
-            }
-        }
-        json.put("currentVersionState", versionState);
-
-        Map<String, String> jsonModules = new HashMap<>();
-        json.put("modules", jsonModules);
-
-        Version coreVersion = Common.getVersion();
-        jsonModules.put(ModuleRegistry.CORE_MODULE_NAME, coreVersion.toString());
-        for (Module module : modules)
-            if (!module.isMarkedForDeletion())
-                jsonModules.put(module.getName(), module.getVersion().toString());
-
-        // Add in the unloaded modules so we don't re-download them if we don't have to
-        for (Module module : ModuleRegistry.getUnloadedModules())
-            if (!module.isMarkedForDeletion())
-                jsonModules.put(module.getName(), module.getVersion().toString());
-
-        //Optionally Add Usage Data Check if first login for admin has happened to ensure they have
-        if (SystemSettingsDao.getInstance().getBooleanValue(SystemSettingsDao.USAGE_TRACKING_ENABLED)) {
-            //Collect statistics
-            List<DataSourceUsageStatistics> dataSourceCounts = DataSourceDao.getInstance().getUsage();
-            json.put("dataSourcesUsage", dataSourceCounts);
-            List<DataPointUsageStatistics> dataPointCounts = DataPointDao.getInstance().getUsage();
-            json.put("dataPointsUsage", dataPointCounts);
-            List<PublisherUsageStatistics> publisherUsage = PublisherDao.getInstance().getUsage();
-            json.put("publishersUsage", publisherUsage);
-            List<PublisherPointsUsageStatistics> publisherPointsUsageStatistics = publishedPointDao.getUsage();
-            json.put("publisherPointsUsage", publisherPointsUsageStatistics);
-
-            for (ValueMonitor<?> m : Common.MONITORED_VALUES.getMonitors()) {
-                if (m.isUploadToStore()) {
-                    if (m.getValue() != null) {
-                        json.put(m.getId(), m.getValue());
-                    }
-                }
-            }
-        }
-
-        StringWriter stringWriter = new StringWriter();
-        new JsonWriter(Common.JSON_CONTEXT, stringWriter).writeObject(json);
-        String requestData = stringWriter.toString();
-
-        // Send the request
-        String baseUrl = env.getProperty("store.url");
-        if (StringUtils.isEmpty(baseUrl)) {
-            log.info("No version check performed as no store.url is defined in configuration file.");
-            return null;
-        }
-        baseUrl += "/servlet/versionCheck";
-
-        HttpPost post = new HttpPost(baseUrl);
-        post.setEntity(new StringEntity(requestData));
-
-        String responseData = HttpUtils4.getTextContent(Common.getHttpClient(), post, 1);
-
-        // Parse the response
-        JsonTypeReader jsonReader = new JsonTypeReader(responseData);
-        return jsonReader.read();
+        log.info("Upgrade check disabled — SlateBAS does not contact external stores.");
+        return null;
     }
 
     public void addModuleNotificationListener(ModuleNotificationListener listener) {

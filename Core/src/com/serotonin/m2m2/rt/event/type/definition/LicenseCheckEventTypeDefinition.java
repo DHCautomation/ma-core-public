@@ -4,6 +4,7 @@
 package com.serotonin.m2m2.rt.event.type.definition;
 
 import com.serotonin.m2m2.i18n.Translations;
+import com.serotonin.m2m2.module.ConditionalDefinition;
 import com.serotonin.m2m2.module.SystemEventTypeDefinition;
 import com.serotonin.m2m2.rt.event.type.SystemEventType;
 
@@ -11,6 +12,7 @@ import com.serotonin.m2m2.rt.event.type.SystemEventType;
  * @author Terry Packer
  *
  */
+@ConditionalDefinition(enabled = false) // DHC: license check events disabled
 public class LicenseCheckEventTypeDefinition extends SystemEventTypeDefinition {
 
     @Override

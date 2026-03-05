@@ -182,7 +182,8 @@ public class Common {
     //
     // License
     static InstanceLicense license;
-    static boolean free = true;
+    // DHC: always report as fully licensed
+    static boolean free = false;
     static boolean invalid = false;
 
     public static InstanceLicense license() {
@@ -195,12 +196,13 @@ public class Common {
         return null;
     }
 
+    // DHC: always report as fully licensed — loadLic() in ma-priv may set free=true, override here
     public static boolean isFree() {
-        return free;
+        return false;
     }
 
     public static boolean isInvalid() {
-        return invalid;
+        return false;
     }
 
     public static boolean isCoreSigned() {
