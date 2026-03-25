@@ -156,6 +156,10 @@ public class UpgradeDownloader extends HighPriorityTask {
                 String url = baseStoreUrl + "/"
                         + ModuleUtils.downloadFilename(name, version.getNormalVersion());
                 HttpGet get = new HttpGet(url);
+                // Prevent 304 Not Modified from CDN/proxy caches
+                get.setHeader("Cache-Control", "no-cache");
+                get.removeHeaders("If-None-Match");
+                get.removeHeaders("If-Modified-Since");
 
                 FileOutputStream out = null;
                 File outFile = new File(tempDir, filename);
