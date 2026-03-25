@@ -125,7 +125,9 @@ public class ModulesService {
             baseUrl += "/servlet/consistencyCheck";
 
             HttpPost post = new HttpPost(baseUrl);
-            post.setEntity(new StringEntity(requestData));
+            StringEntity entity = new StringEntity(requestData);
+            entity.setContentType("application/json");
+            post.setEntity(entity);
 
             String responseData = HttpUtils4.getTextContent(Common.getHttpClient(), post, 1);
 
@@ -322,7 +324,9 @@ public class ModulesService {
         baseUrl += "/servlet/versionCheck";
 
         HttpPost post = new HttpPost(baseUrl);
-        post.setEntity(new StringEntity(requestData));
+        StringEntity entity = new StringEntity(requestData);
+        entity.setContentType("application/json");
+        post.setEntity(entity);
 
         String responseData = HttpUtils4.getTextContent(Common.getHttpClient(), post, 1);
 
