@@ -97,7 +97,9 @@ public class SystemEventType extends EventType {
     public static void raiseEvent(SystemEventType type, long time, boolean rtn, TranslatableMessage message, Map<String, Object> context) {
         EventTypeVO vo = EVENT_TYPES.get(type.getSystemEventType());
         if (vo == null) {
-            LOG.warn("Unknown system event type: " + type.getSystemEventType());
+            if (!"LICENSE_CHECK".equals(type.getSystemEventType())) {
+                LOG.warn("Unknown system event type: " + type.getSystemEventType());
+            }
             return;
         }
         Common.eventManager.raiseEvent(type, time, rtn, vo.getAlarmLevel(), message, context);
