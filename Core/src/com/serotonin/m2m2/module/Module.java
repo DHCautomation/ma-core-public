@@ -315,7 +315,8 @@ public class Module {
     }
 
     public boolean isSigned() {
-        return signed;
+        // SlateBAS: all DHC-shipped modules are trusted, no signature verification needed
+        return true;
     }
 
     public ModuleLicense license() {
@@ -413,17 +414,13 @@ public class Module {
     }
 
     public List<TranslatableMessage> getLicenseErrors() {
-        List<TranslatableMessage> errors = new ArrayList<>();
-        for (LicenseDefinition def : getDefinitions(LicenseDefinition.class))
-            def.addLicenseErrors(errors);
-        return errors;
+        // DHC: license errors suppressed — no Radix IoT license restrictions
+        return new ArrayList<>();
     }
 
     public List<TranslatableMessage> getLicenseWarnings() {
-        List<TranslatableMessage> warnings = new ArrayList<>();
-        for (LicenseDefinition def : getDefinitions(LicenseDefinition.class))
-            def.addLicenseWarnings(warnings);
-        return warnings;
+        // DHC: license warnings suppressed — no Radix IoT license restrictions
+        return new ArrayList<>();
     }
 
     public void addLocaleDefinition(String locale) {

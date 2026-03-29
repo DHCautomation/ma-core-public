@@ -27,10 +27,6 @@ public class BasicModuleLicense extends LicenseDefinition {
 
     @Override
     public void licenseCheck(boolean initialization) {
-        if (initialization) {
-            ERRORS.clear();
-            if (getModule().license() == null)
-                ERRORS.add(new TranslatableMessage("module.notLicensed"));
-        }
+        // DHC: license check disabled — no Radix IoT license restrictions
     }
 }

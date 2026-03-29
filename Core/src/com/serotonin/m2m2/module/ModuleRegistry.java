@@ -658,11 +658,8 @@ public class ModuleRegistry {
 
         @Override
         public String getLicenseType() {
-            if(Common.isInvalid()) {
-                return "Invalid";
-            }else {
-                return Common.license() == null ? null : Common.license().getLicenseType();
-            }
+            // DHC: always report as licensed — no Radix IoT license restrictions
+            return "SlateBAS";
         }
 
         public int getLicenseAgreementVersion() {
